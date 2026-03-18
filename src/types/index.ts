@@ -3,6 +3,7 @@ export type Role = 'formadur' | 'gjaldkeri' | 'ritari' | 'eigandi'
 export interface Profile {
   id: string
   full_name: string | null
+  email?: string | null
   phone: string | null
   role: Role | null
   apartment_id: string | null

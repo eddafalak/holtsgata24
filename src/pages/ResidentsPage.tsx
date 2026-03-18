@@ -1,4 +1,5 @@
-import { Mail, Phone, Plus, Search } from 'lucide-react'
+import { Selection } from '@phosphor-icons/react'
+import { ChevronRight, Mail, Phone, Plus, Search, Users2 } from 'lucide-react'
 import { useResidents } from '@/hooks/useResidents'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -69,8 +70,20 @@ function roleLabel(role: string | null | undefined) {
 export function ResidentsPage() {
   const { data, isLoading, isError } = useResidents()
   const [search, setSearch] = useState('')
+  const [expandedApartmentIds, setExpandedApartmentIds] = useState<Set<string>>(
+    () => new Set(),
+  )
   const cardBoxShadow = '0px 0px 24px -4px rgba(0, 0, 0, 0.05)'
-  const tableBoxShadow = '0px 0px 20px 0px rgba(0, 0, 0, 0.05)'
+  const tableBoxShadow = '0px 0px 24px 0px rgba(0, 0, 0, 0.05)'
+
+  function toggleApartment(id: string) {
+    setExpandedApartmentIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const baseList = (data && data.length > 0 ? data : MOCK_APARTMENTS) as Array<{
     id: string
@@ -179,14 +192,24 @@ export function ResidentsPage() {
         <div className="flex flex-col gap-4">
           {filtered.map((apt) => {
             if (!apt) return null
+            const isExpanded = expandedApartmentIds.has(apt.id)
             return (
               <div
                 key={apt.id}
-                className="rounded-lg bg-white p-6 shadow-[0px_0px_20px_0px_rgba(0,0,0,0.05)]"
+                className="rounded-lg bg-white shadow-[0px_0px_24px_0px_rgba(0,0,0,0.05)] overflow-hidden"
                 style={{ boxShadow: tableBoxShadow }}
               >
-                <div className="flex w-full items-start justify-between gap-4">
-                  <div className="flex flex-1 flex-col gap-1">
+                <div
+                  className="flex w-full items-start justify-between gap-4 p-5"
+                  onClick={() => toggleApartment(apt.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') toggleApartment(apt.id)
+                  }}
+                  aria-expanded={isExpanded}
+                >
+                  <div className="flex flex-[1_0_0] flex-col gap-1">
                     <div className="text-[16px] font-medium leading-5 text-[#323232]">
                       {apt.name}
                     </div>
@@ -195,57 +218,96 @@ export function ResidentsPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-1 flex-col items-end justify-center px-3">
-                    <div className="text-[12px] leading-[1.5] text-[#666]">Stærð</div>
-                    <div className="text-[14px] font-medium leading-5 text-[#323232]">
-                      {apt.size} fm
+                  <div className="flex flex-[1_0_0] flex-col items-end justify-center px-3">
+                    <div className="flex items-center justify-center gap-1">
+                      <Selection
+                        size={14}
+                        weight="regular"
+                        className="h-3.5 w-3.5 text-[#666]"
+                        aria-hidden="true"
+                      />
+                      <div className="text-[14px] font-medium leading-5 text-[#323232]">
+                        {apt.size}m²
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-center gap-1 text-[12px] leading-[1.5] text-[#666]">
+                      <Users2 className="h-3.5 w-3.5 text-[#666]" aria-hidden="true" />
+                      <span>
+                        {apt.residents.length} {apt.residents.length === 1 ? 'eigandi' : 'eigendur'}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-col gap-3">
-                  {apt.residents.length === 0 ? (
-                    <div className="rounded-lg bg-[#fbfbfc] p-6 text-[14px] leading-5 text-[#666]">
-                      Enginn eigandi hefur verið skráður fyrir þessari íbúð ennþá.
-                    </div>
-                  ) : (
-                    apt.residents.map((resident) => (
-                      <div
-                        key={resident.id}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[#fbfbfc] p-6"
-                      >
-                        <div className="flex min-w-0 flex-1 items-center gap-3">
-                          <div className="min-w-0 text-[16px] leading-5 text-[#323232]">
-                            {resident.full_name ?? 'Nafn ótilgreint'}
-                          </div>
-                          {resident.role ? (
-                            <>
-                              <div className="h-3.5 w-px bg-[#a2a4a8]" />
-                              <div className="text-[16px] leading-5 text-[#a2a4a8]">
-                                {roleLabel(resident.role)}
+                {isExpanded ? (
+                  <div
+                    id={`apartment-${apt.id}-details`}
+                    className="border-t border-[#f2f3f4] px-5 py-4"
+                  >
+                    <div className="flex flex-col gap-3">
+                      {apt.residents.length === 0 ? (
+                        <div className="rounded-lg bg-[#fbfbfc] p-6 text-[14px] leading-5 text-[#666]">
+                          Enginn eigandi hefur verið skráður fyrir þessari íbúð ennþá.
+                        </div>
+                      ) : (
+                        apt.residents.map((resident) => (
+                          <div
+                            key={resident.id}
+                            className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[#fbfbfc] p-6"
+                          >
+                            <div className="flex min-w-0 flex-1 items-center gap-3">
+                              <div className="min-w-0 text-[16px] leading-5 text-[#323232]">
+                                {resident.full_name ?? 'Nafn ótilgreint'}
                               </div>
-                            </>
-                          ) : null}
-                        </div>
+                              {resident.role ? (
+                                <>
+                                  <div className="h-3.5 w-px bg-[#a2a4a8]" />
+                                  <div className="text-[16px] leading-5 text-[#a2a4a8]">
+                                    {roleLabel(resident.role)}
+                                  </div>
+                                </>
+                              ) : null}
+                            </div>
 
-                        <div className="flex flex-wrap items-center gap-2">
-                          {resident.phone ? (
-                            <div className="flex items-center gap-2 px-3 text-[16px] leading-5 text-[#323232]">
-                              <Phone className="h-5 w-5" />
-                              <span>{resident.phone}</span>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {resident.phone ? (
+                                <div className="flex items-center gap-2 px-3 text-[16px] leading-5 text-[#323232]">
+                                  <Phone className="h-5 w-5" />
+                                  <span>{resident.phone}</span>
+                                </div>
+                              ) : null}
+                              {resident.email ? (
+                                <div className="flex items-center gap-2 px-3 text-[16px] leading-5 text-[#323232]">
+                                  <Mail className="h-5 w-5" />
+                                  <span>{resident.email}</span>
+                                </div>
+                              ) : null}
                             </div>
-                          ) : null}
-                          {resident.email ? (
-                            <div className="flex items-center gap-2 px-3 text-[16px] leading-5 text-[#323232]">
-                              <Mail className="h-5 w-5" />
-                              <span>{resident.email}</span>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-4 border-t border-[#f2f3f4] px-5 py-4 text-left"
+                  onClick={() => toggleApartment(apt.id)}
+                  aria-expanded={isExpanded}
+                  aria-controls={`apartment-${apt.id}-details`}
+                >
+                  <span className="text-[14px] font-medium leading-5 text-[#323232]">
+                    {isExpanded ? 'Fela upplýsingar' : 'Sýna upplýsingar'}
+                  </span>
+                  <ChevronRight
+                    className={cn(
+                      'h-4 w-4 text-[#323232] transition-transform',
+                      isExpanded ? 'rotate-90' : 'rotate-0',
+                    )}
+                    aria-hidden="true"
+                  />
+                </button>
               </div>
             )
           })}

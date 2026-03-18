@@ -118,14 +118,9 @@
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  width: 100%;
   min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+  margin: 0;
   box-sizing: border-box;
 }
 
@@ -133,14 +128,15 @@ body {
   margin: 0;
 }
 
-h1,
-h2 {
+/* Only apply default heading styles when no utility classes are used. */
+h1:not([class]),
+h2:not([class]) {
   font-family: var(--heading);
   font-weight: 500;
   color: var(--text-h);
 }
 
-h1 {
+h1:not([class]) {
   font-size: 56px;
   letter-spacing: -1.68px;
   margin: 32px 0;
@@ -149,7 +145,8 @@ h1 {
     margin: 20px 0;
   }
 }
-h2 {
+
+h2:not([class]) {
   font-size: 24px;
   line-height: 118%;
   letter-spacing: -0.24px;

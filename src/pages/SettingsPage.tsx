@@ -13,7 +13,7 @@ type SettingsSection = 'profile' | 'security' | 'preferences' | 'notification'
 
 const SETTINGS_SECTIONS: Array<{ id: SettingsSection; label: string }> = [
   { id: 'profile', label: 'Mínar upplýsingar' },
-  { id: 'security', label: 'Öryggi' },
+  { id: 'security', label: 'Edda' },
   { id: 'preferences', label: 'Notendastillingar' },
   { id: 'notification', label: 'Tilkynningar' },
 ]

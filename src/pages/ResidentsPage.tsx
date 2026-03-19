@@ -1,5 +1,5 @@
-import { Selection } from '@phosphor-icons/react'
-import { ChevronRight, Mail, Phone, Plus, Search, Users2 } from 'lucide-react'
+import { Mail, Phone, Plus, Search } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { useResidents } from '@/hooks/useResidents'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -73,6 +73,10 @@ export function ResidentsPage() {
   const [expandedApartmentIds, setExpandedApartmentIds] = useState<Set<string>>(
     () => new Set(),
   )
+  // Figma assets for the apartment table row.
+  // Generated from node-id `109:1975` in the Figma MCP workflow.
+  const imgVectorResidents = 'http://localhost:3845/assets/ddfe367ea94f000b6638706d7d7094ccb7b66941.svg'
+  const imgVectorSize = 'http://localhost:3845/assets/c8f12d2743cc0c98553a2e763a68e58c0d4b5b07.svg'
   const cardBoxShadow = '0px 0px 24px -4px rgba(0, 0, 0, 0.05)'
   const tableBoxShadow = '0px 0px 24px 0px rgba(0, 0, 0, 0.05)'
 
@@ -130,7 +134,7 @@ export function ResidentsPage() {
   }, [baseList, search])
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2">
       <div
         className={cn('flex flex-col items-start overflow-hidden rounded-lg border border-[#f2f3f4] bg-white p-6')}
         style={{ boxShadow: cardBoxShadow }}
@@ -189,7 +193,7 @@ export function ResidentsPage() {
       ) : null}
 
       {filtered.length > 0 ? (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
           {filtered.map((apt) => {
             if (!apt) return null
             const isExpanded = expandedApartmentIds.has(apt.id)
@@ -200,7 +204,7 @@ export function ResidentsPage() {
                 style={{ boxShadow: tableBoxShadow }}
               >
                 <div
-                  className="flex w-full items-start justify-between gap-4 p-5"
+                  className="flex w-full items-center justify-center gap-4 p-5"
                   onClick={() => toggleApartment(apt.id)}
                   role="button"
                   tabIndex={0}
@@ -210,31 +214,47 @@ export function ResidentsPage() {
                   aria-expanded={isExpanded}
                 >
                   <div className="flex flex-[1_0_0] flex-col gap-1">
-                    <div className="text-[16px] font-medium leading-5 text-[#323232]">
+                    <div className="text-[16px] font-medium leading-[20px] text-[#323232]">
                       {apt.name}
                     </div>
-                    <div className="text-[12px] leading-[1.5] text-[#666]">
-                      Fasteignanúmer {apt.property_number}
+                    <div className="flex items-center gap-3">
+                      <div className="text-[12px] leading-[1.5] text-[#666]">
+                        Fasteignanúmer {apt.property_number}
+                      </div>
+                      <div className="flex items-center gap-[4px] text-[12px] leading-[1.5] text-[#666]">
+                        <img
+                          src={imgVectorResidents}
+                          alt=""
+                          className="h-[8.757px] w-[13.759px] shrink-0"
+                          aria-hidden="true"
+                        />
+                        <span>
+                          {apt.residents.length} {apt.residents.length === 1 ? 'eigandi' : 'eigendur'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-[1_0_0] flex-col items-end justify-center px-3">
-                    <div className="flex items-center justify-center gap-1">
-                      <Selection
-                        size={14}
-                        weight="regular"
-                        className="h-3.5 w-3.5 text-[#666]"
+                  <div className="flex flex-[0_0_auto] items-center gap-[8px] px-3">
+                    <div className="flex items-center justify-center gap-[8px]">
+                      <img
+                        src={imgVectorSize}
+                        alt=""
+                        className="h-[14px] w-[14px] shrink-0"
                         aria-hidden="true"
                       />
-                      <div className="text-[14px] font-medium leading-5 text-[#323232]">
-                        {apt.size}m²
+                      <div className="text-[14px] font-medium leading-[20px] text-[#323232]">
+                        {apt.size}m
                       </div>
                     </div>
-                    <div className="flex items-center justify-center gap-1 text-[12px] leading-[1.5] text-[#666]">
-                      <Users2 className="h-3.5 w-3.5 text-[#666]" aria-hidden="true" />
-                      <span>
-                        {apt.residents.length} {apt.residents.length === 1 ? 'eigandi' : 'eigendur'}
-                      </span>
+                    <div
+                      className={cn(
+                        'w-[16px] h-[16px] flex items-center justify-center shrink-0 transition-transform',
+                        isExpanded ? 'rotate-90' : 'rotate-0',
+                      )}
+                      aria-hidden="true"
+                    >
+                      <ChevronRight className="h-4 w-4 text-[#323232]" />
                     </div>
                   </div>
                 </div>
@@ -246,14 +266,14 @@ export function ResidentsPage() {
                   >
                     <div className="flex flex-col gap-3">
                       {apt.residents.length === 0 ? (
-                        <div className="rounded-lg bg-[#fbfbfc] p-6 text-[14px] leading-5 text-[#666]">
+                        <div className="rounded-lg bg-[rgba(242,243,244,0.3)] p-6 text-[14px] leading-5 text-[#666]">
                           Enginn eigandi hefur verið skráður fyrir þessari íbúð ennþá.
                         </div>
                       ) : (
                         apt.residents.map((resident) => (
                           <div
                             key={resident.id}
-                            className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[#fbfbfc] p-6"
+                            className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[rgba(242,243,244,0.3)] p-6"
                           >
                             <div className="flex min-w-0 flex-1 items-center gap-3">
                               <div className="min-w-0 text-[16px] leading-5 text-[#323232]">
@@ -289,25 +309,6 @@ export function ResidentsPage() {
                     </div>
                   </div>
                 ) : null}
-
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-4 border-t border-[#f2f3f4] px-5 py-4 text-left"
-                  onClick={() => toggleApartment(apt.id)}
-                  aria-expanded={isExpanded}
-                  aria-controls={`apartment-${apt.id}-details`}
-                >
-                  <span className="text-[14px] font-medium leading-5 text-[#323232]">
-                    {isExpanded ? 'Fela upplýsingar' : 'Sýna upplýsingar'}
-                  </span>
-                  <ChevronRight
-                    className={cn(
-                      'h-4 w-4 text-[#323232] transition-transform',
-                      isExpanded ? 'rotate-90' : 'rotate-0',
-                    )}
-                    aria-hidden="true"
-                  />
-                </button>
               </div>
             )
           })}

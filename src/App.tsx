@@ -9,6 +9,7 @@ import { ContractsPage } from './pages/ContractsPage'
 import { BillsPage } from './pages/BillsPage'
 import { MessagesPage } from './pages/MessagesPage'
 import { ResidentsPage } from './pages/ResidentsPage'
+import { SettingsPage } from './pages/SettingsPage'
 
 const queryClient = new QueryClient()
 
@@ -25,6 +26,7 @@ function App() {
             <Route path="reikningar" element={<BillsPage />} />
             <Route path="skilabod" element={<MessagesPage />} />
             <Route path="eigendur" element={<ResidentsPage />} />
+            <Route path="stillingar" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/innskraning" replace />} />
         </Routes>

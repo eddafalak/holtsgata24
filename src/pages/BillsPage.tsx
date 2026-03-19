@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { CalendarRange, Filter, Plus, Receipt, Search } from 'lucide-react'
+import { CalendarRange, Plus, Receipt, Search } from 'lucide-react'
 
 export function BillsPage() {
   return (

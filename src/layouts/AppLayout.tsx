@@ -1,4 +1,12 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@radix-ui/react-dropdown-menu'
 import {
   Home,
   CalendarClock,
@@ -7,7 +15,15 @@ import {
   MessagesSquare,
   Users2,
   Bell,
+  Settings as SettingsIcon,
   ChevronDown,
+  UserRoundPlus,
+  UserRound,
+  KeyRound,
+  CreditCard,
+  Lightbulb,
+  HelpCircle,
+  LogOut,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -20,6 +36,7 @@ const navItems = [
   { to: '/reikningar', label: 'Reikningar og skjöl', icon: Receipt },
   { to: '/skilabod', label: 'Skilaboð', icon: MessagesSquare },
   { to: '/eigendur', label: 'Eigendur', icon: Users2 },
+  { to: '/stillingar', label: 'Stillingar', icon: SettingsIcon },
 ]
 
 const roleLabel: Record<Role, string> = {
@@ -36,22 +53,28 @@ const pageTitleByPath: Record<string, string> = {
   '/reikningar': 'Reikningar og skjöl',
   '/skilabod': 'Skilaboð',
   '/eigendur': 'Eigendur',
+  '/stillingar': 'Tengiliðaupplýsingar',
 }
 
 // TODO: Tengja þetta við Supabase auth
 const currentUser = {
   name: 'Edda Falak',
   role: 'formadur' as Role,
+  apartmentLabel: 'Íbúð 0301',
 }
 
 export function AppLayout() {
   const location = useLocation()
   const title = pageTitleByPath[location.pathname] ?? 'Húsfélag'
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
 
   return (
     <div className="min-h-screen flex gap-4 bg-[#18325a] p-4">
       {/* Sidebar – Figma: dark blue, nav only, green active */}
-      <aside className="hidden md:flex h-full w-[328px] shrink-0 flex-col overflow-hidden pb-12 pt-[36px]">
+      <aside
+        className="hidden md:flex h-full w-[328px] shrink-0 flex-col overflow-hidden pb-12 pt-[42px]"
+        style={{ width: '291px' }}
+      >
         <div className="px-4">
           <div className="text-[24px] font-bold leading-[1.222] text-white">
             Húsfélag
@@ -67,7 +90,7 @@ export function AppLayout() {
                 to={item.to}
                 className={({ isActive }) =>
                   [
-                    'rounded-lg px-4 py-2 text-[20px] leading-[1.2] transition-colors flex items-center gap-3',
+                    'rounded-lg px-4 py-2 text-[16px] leading-[1.2] transition-colors flex items-center gap-3',
                     isActive
                       ? 'bg-[#dfffb4] text-[#18325a] font-medium'
                       : 'text-white font-normal hover:bg-white/10',
@@ -84,7 +107,7 @@ export function AppLayout() {
 
       {/* Main content – Figma: #fbfbfb, rounded */}
       <div className="flex-1 flex flex-col min-h-screen bg-[#fbfbfb] rounded-xl overflow-hidden py-0">
-        <div className="flex flex-1 flex-col gap-4 bg-[#fbfbfb] p-[32px]">
+        <div className="flex flex-1 flex-col gap-4 bg-[#fbfbfb] p-[32px] w-full">
           <header className="h-12 bg-[#fbfbfb]">
             <div className="flex h-full w-full items-center justify-between gap-4">
               <h1 className="text-[24px] font-bold leading-[1.222] text-[#323232]">
@@ -104,20 +127,124 @@ export function AppLayout() {
                     className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#F4743B]"
                   />
                 </Button>
-                <Button
-                  variant="outline"
-                  className="h-12 w-[240px] justify-end gap-2 rounded border-[#f2f3f4] bg-white px-4 py-2"
-                >
-                  <div className="flex flex-1 flex-col items-start text-left">
-                    <span className="text-[14px] font-bold leading-4 text-black">
-                      {currentUser.name}
-                    </span>
-                    <span className="text-[12px] font-normal leading-4 text-black">
-                      {roleLabel[currentUser.role]}
-                    </span>
-                  </div>
-                  <ChevronDown className="h-4 w-4 shrink-0" />
-                </Button>
+                <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="h-12 w-[240px] justify-end gap-2 rounded border-[#f2f3f4] bg-white px-4 py-2 hover:bg-[#f7f8fa] data-[state=open]:bg-[#f7f8fa] focus-visible:ring-0 focus-visible:border-[#f2f3f4] focus:ring-0 focus:border-[#f2f3f4] focus:outline-none"
+                    >
+                      <div className="flex flex-1 flex-col items-start text-left">
+                        <span className="text-[14px] font-bold leading-4 text-black">
+                          {currentUser.name}
+                        </span>
+                        <span className="text-[12px] font-normal leading-4 text-black">
+                          {roleLabel[currentUser.role]}
+                        </span>
+                      </div>
+                      <ChevronDown className="h-4 w-4 shrink-0" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    sideOffset={8}
+                    className="w-[240px] rounded-[8px] border border-[#f2f3f4] bg-white p-0 shadow-[0px_0px_24px_0px_rgba(0,0,0,0.05)]"
+                  >
+                    <DropdownMenuItem
+                      className="px-4 py-[12px] flex items-center gap-3 rounded-none text-[14px] leading-5 text-[#323232] hover:bg-[#f7f8fa]"
+                      onSelect={(e) => {
+                        e.preventDefault()
+                        // eslint-disable-next-line no-console
+                        console.log('switch-access')
+                        setUserMenuOpen(false)
+                      }}
+                    >
+                      <UserRoundPlus className="h-[20px] w-[20px] text-[#323232]" />
+                      Skipta um aðgang
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      className="px-4 py-[12px] flex items-center gap-3 rounded-none text-[14px] leading-5 text-[#323232] hover:bg-[#f2f3f4]"
+                      onSelect={(e) => {
+                        e.preventDefault()
+                        // eslint-disable-next-line no-console
+                        console.log('my-info')
+                        setUserMenuOpen(false)
+                      }}
+                    >
+                      <UserRound className="h-4 w-4 text-[#323232]" />
+                      Mínar upplýsingar
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      className="px-4 py-[12px] flex items-center gap-3 rounded-none text-[14px] leading-5 text-[#323232] hover:bg-[#f7f8fa]"
+                      onSelect={(e) => {
+                        e.preventDefault()
+                        // eslint-disable-next-line no-console
+                        console.log('access-and-proxy')
+                        setUserMenuOpen(false)
+                      }}
+                    >
+                      <KeyRound className="h-4 w-4 text-[#323232]" />
+                      Aðgangar og umboð
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      className="px-4 py-[12px] flex items-center gap-3 rounded-none text-[14px] leading-5 text-[#323232] hover:bg-[#f7f8fa]"
+                      onSelect={(e) => {
+                        e.preventDefault()
+                        // eslint-disable-next-line no-console
+                        console.log('payment-info')
+                        setUserMenuOpen(false)
+                      }}
+                    >
+                      <CreditCard className="h-4 w-4 text-[#323232]" />
+                      Greiðsluupplýsingar
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator className="bg-[#e8efef]" />
+
+                    <DropdownMenuItem
+                      className="px-4 py-[12px] flex items-center gap-3 rounded-none text-[14px] leading-5 text-[#323232] hover:bg-[#f7f8fa]"
+                      onSelect={(e) => {
+                        e.preventDefault()
+                        // eslint-disable-next-line no-console
+                        console.log('council')
+                        setUserMenuOpen(false)
+                      }}
+                    >
+                      <Lightbulb className="h-4 w-4 text-[#323232]" />
+                      Hollráð
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      className="px-4 py-[12px] flex items-center gap-3 rounded-none text-[14px] leading-5 text-[#323232] hover:bg-[#f7f8fa]"
+                      onSelect={(e) => {
+                        e.preventDefault()
+                        // eslint-disable-next-line no-console
+                        console.log('help')
+                        setUserMenuOpen(false)
+                      }}
+                    >
+                      <HelpCircle className="h-4 w-4 text-[#323232]" />
+                      Aðstoð
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator className="bg-[#e8efef]" />
+
+                    <DropdownMenuItem
+                      className="px-4 py-[12px] flex items-center gap-3 rounded-none text-[14px] leading-5 text-[#323232] hover:bg-[#f7f8fa]"
+                      onSelect={(e) => {
+                        e.preventDefault()
+                        // eslint-disable-next-line no-console
+                        console.log('logout')
+                        setUserMenuOpen(false)
+                      }}
+                    >
+                      <LogOut className="h-4 w-4 text-[#323232]" />
+                      Útskrá
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </header>

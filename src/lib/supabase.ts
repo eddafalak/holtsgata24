@@ -1,18 +1,28 @@
 import { createClient } from '@supabase/supabase-js'
+import type { Database } from '@/lib/database.types'
 
 const rawUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
-// While Supabase is "paused" in this project, fall back to a dummy but valid URL
-// so that createClient does not throw and the UI can still render.
-const supabaseUrl =
-  rawUrl && rawUrl.startsWith('http') ? rawUrl : 'https://example.com'
-const supabaseAnonKey = rawKey || 'public-anon-key'
+const configured = Boolean(rawUrl && rawKey && rawUrl.startsWith('http'))
 
-if (!rawUrl || !rawKey) {
+const supabaseUrl = configured ? rawUrl! : 'https://example.com'
+const supabaseAnonKey = configured ? rawKey! : 'public-anon-key'
+
+if (!configured && import.meta.env.DEV) {
   console.warn(
-    'Supabase env vars are not set. Using a dummy Supabase client for UI development only.',
+    '[supabase] Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local (sjá .env.example).',
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+})
+
+export function isSupabaseConfigured(): boolean {
+  return configured
+}

@@ -1,5 +1,7 @@
-import { Outlet, NavLink, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
+import { useAuth } from '@/hooks/useAuth'
+import { isSupabaseConfigured } from '@/lib/supabase'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,8 +26,10 @@ import {
   Lightbulb,
   HelpCircle,
   LogOut,
+  Palette,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 type Role = 'formadur' | 'gjaldkeri' | 'ritari' | 'notandi'
 
@@ -39,10 +43,11 @@ const navItems = [
   { to: '/stillingar', label: 'Stillingar', icon: SettingsIcon },
 ]
 
-const roleLabel: Record<Role, string> = {
+const roleLabel: Record<Role | 'eigandi', string> = {
   formadur: 'Formaður húsfélags',
   gjaldkeri: 'Gjaldkeri',
   ritari: 'Ritari',
+  eigandi: 'Eigandi',
   notandi: 'Notandi',
 }
 
@@ -56,8 +61,7 @@ const pageTitleByPath: Record<string, string> = {
   '/stillingar': 'Tengiliðaupplýsingar',
 }
 
-// TODO: Tengja þetta við Supabase auth
-const currentUser = {
+const fallbackUser = {
   name: 'Edda Falak',
   role: 'formadur' as Role,
   apartmentLabel: 'Íbúð 0301',
@@ -65,15 +69,30 @@ const currentUser = {
 
 export function AppLayout() {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { profile, user, signOut } = useAuth()
   const title = pageTitleByPath[location.pathname] ?? 'Húsfélag'
   const [userMenuOpen, setUserMenuOpen] = useState(false)
 
+  const displayName =
+    isSupabaseConfigured() && user
+      ? (profile?.full_name ?? user.email ?? fallbackUser.name)
+      : fallbackUser.name
+  const roleKey: keyof typeof roleLabel =
+    isSupabaseConfigured() && profile
+      ? profile.role
+        ? profile.role === 'eigandi'
+          ? 'eigandi'
+          : (profile.role as Role)
+        : 'notandi'
+      : fallbackUser.role
+
   return (
-    <div className="min-h-screen flex gap-4 bg-[#18325a] p-4">
+    <div className="min-h-screen flex gap-0 bg-[#18325a] p-4">
       {/* Sidebar – Figma: dark blue, nav only, green active */}
       <aside
         className="hidden md:flex h-full w-[328px] shrink-0 flex-col overflow-hidden pb-12 pt-[42px]"
-        style={{ width: '291px' }}
+        style={{ width: '291px', paddingRight: '36px', paddingLeft: '20px' }}
       >
         <div className="px-4">
           <div className="text-[24px] font-bold leading-[1.222] text-white">
@@ -103,6 +122,26 @@ export function AppLayout() {
             )
           })}
         </nav>
+
+        {import.meta.env.DEV ? (
+          <div className="mt-auto shrink-0 px-4 pb-2 pt-6">
+            <NavLink
+              to="/design-system"
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-2 rounded-lg px-4 py-2 text-xs leading-4 transition-colors',
+                  isActive
+                    ? 'bg-white/15 font-medium text-[#dfffb4]'
+                    : 'text-white/45 hover:bg-white/10 hover:text-white/80',
+                )
+              }
+            >
+              <Palette className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+              Hönnunarkerfi
+            </NavLink>
+            <p className="mt-1 px-4 text-[10px] leading-3 text-white/35">Aðeins í þróun</p>
+          </div>
+        ) : null}
       </aside>
 
       {/* Main content – Figma: #fbfbfb, rounded */}
@@ -135,10 +174,10 @@ export function AppLayout() {
                     >
                       <div className="flex flex-1 flex-col items-start text-left">
                         <span className="text-[14px] font-bold leading-4 text-black">
-                          {currentUser.name}
+                          {displayName}
                         </span>
                         <span className="text-[12px] font-normal leading-4 text-black">
-                          {roleLabel[currentUser.role]}
+                          {roleLabel[roleKey]}
                         </span>
                       </div>
                       <ChevronDown className="h-4 w-4 shrink-0" />
@@ -166,8 +205,7 @@ export function AppLayout() {
                       className="px-4 py-[12px] flex items-center gap-3 rounded-none text-[14px] leading-5 text-[#323232] hover:bg-[#f2f3f4]"
                       onSelect={(e) => {
                         e.preventDefault()
-                        // eslint-disable-next-line no-console
-                        console.log('my-info')
+                        navigate('/stillingar?tab=profile')
                         setUserMenuOpen(false)
                       }}
                     >
@@ -233,11 +271,13 @@ export function AppLayout() {
 
                     <DropdownMenuItem
                       className="px-4 py-[12px] flex items-center gap-3 rounded-none text-[14px] leading-5 text-[#323232] hover:bg-[#f7f8fa]"
-                      onSelect={(e) => {
+                      onSelect={async (e) => {
                         e.preventDefault()
-                        // eslint-disable-next-line no-console
-                        console.log('logout')
                         setUserMenuOpen(false)
+                        if (isSupabaseConfigured()) {
+                          await signOut()
+                        }
+                        navigate('/innskraning', { replace: true })
                       }}
                     >
                       <LogOut className="h-4 w-4 text-[#323232]" />

@@ -9,7 +9,8 @@ interface AuthContextValue {
   profile: Profile | null
   session: Session | null
   loading: boolean
-  signInWithEmail: (email: string) => Promise<void>
+  signInWithPassword: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string, fullName: string) => Promise<{ needsEmailConfirm: boolean }>
   signOut: () => Promise<void>
 }
 
@@ -22,21 +23,35 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let cancelled = false
+
     const init = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setSession(session ?? null)
-      setUser(session?.user ?? null)
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
+        if (error) {
+          console.warn('[auth] getSession:', error.message)
+        }
+        if (cancelled) return
 
-      if (session?.user) {
-        await loadProfile(session.user.id)
+        setSession(session ?? null)
+        setUser(session?.user ?? null)
+
+        if (session?.user) {
+          await loadProfile(session.user.id)
+        }
+      } catch (e) {
+        console.error('[auth] init failed:', e)
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
-
-      setLoading(false)
     }
 
-    init()
+    void init()
 
     const {
       data: { subscription },
@@ -51,6 +66,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     })
 
     return () => {
+      cancelled = true
       subscription.unsubscribe()
     }
   }, [])
@@ -64,18 +80,37 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     if (!error && data) {
       setProfile(data as Profile)
+    } else {
+      setProfile(null)
     }
   }
 
-  const signInWithEmail = async (email: string) => {
+  const signInWithPassword = async (email: string, password: string) => {
     setLoading(true)
     try {
-      await supabase.auth.signInWithOtp({
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const signUp = async (email: string, password: string, fullName: string) => {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase.auth.signUp({
         email,
+        password,
         options: {
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: `${window.location.origin}/innskraning`,
+          data: {
+            full_name: fullName,
+          },
         },
       })
+      if (error) throw error
+      const needsEmailConfirm = Boolean(data.user && !data.session)
+      return { needsEmailConfirm }
     } finally {
       setLoading(false)
     }
@@ -90,7 +125,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     profile,
     session,
     loading,
-    signInWithEmail,
+    signInWithPassword,
+    signUp,
     signOut,
   }
 
@@ -104,4 +140,3 @@ export function useAuth() {
   }
   return ctx
 }
-

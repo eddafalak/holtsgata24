@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 type Role = 'formadur' | 'gjaldkeri' | 'ritari' | 'notandi'
 
@@ -9,16 +10,26 @@ const roleLabel: Record<Role, string> = {
   notandi: 'NOTANDI',
 }
 
-type SettingsSection = 'profile' | 'security' | 'preferences' | 'notification'
+export type SettingsSection = 'profile' | 'security' | 'preferences' | 'notification'
 
 const SETTINGS_SECTIONS: Array<{ id: SettingsSection; label: string }> = [
   { id: 'profile', label: 'Mínar upplýsingar' },
-  { id: 'security', label: 'Edda' },
+  { id: 'security', label: 'Öryggi' },
   { id: 'preferences', label: 'Notendastillingar' },
   { id: 'notification', label: 'Tilkynningar' },
 ]
 
+function isSettingsSection(value: string | null): value is SettingsSection {
+  return (
+    value === 'profile' ||
+    value === 'security' ||
+    value === 'preferences' ||
+    value === 'notification'
+  )
+}
+
 export function SettingsPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   // TODO: Wire to real user profile data (Supabase)
   const currentUser = useMemo(
     () => ({
@@ -34,6 +45,18 @@ export function SettingsPage() {
   )
 
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile')
+
+  useEffect(() => {
+    const raw = searchParams.get('tab')
+    if (raw && isSettingsSection(raw)) {
+      setActiveSection(raw)
+    }
+  }, [searchParams])
+
+  function selectSection(id: SettingsSection) {
+    setActiveSection(id)
+    setSearchParams({ tab: id }, { replace: true })
+  }
 
   const [firstName, setFirstName] = useState('Edda')
   const [lastName, setLastName] = useState('Falak')
@@ -55,12 +78,12 @@ export function SettingsPage() {
               <button
                 key={s.id}
                 type="button"
-                onClick={() => setActiveSection(s.id)}
+                onClick={() => selectSection(s.id)}
                 className={[
                   'px-4 py-1 rounded text-[14px] leading-4 transition-colors h-full',
                   isActive
-                    ? 'bg-white text-black font-medium'
-                    : 'text-[#666] font-normal hover:bg-white/50',
+                    ? 'bg-white text-black font-bold'
+                    : 'text-[#666] font-medium hover:bg-white/50',
                 ].join(' ')}
               >
                 {s.label}
@@ -74,6 +97,8 @@ export function SettingsPage() {
       <div className="mt-[12px] rounded-xl bg-white shadow-[0px_0px_24px_-4px_rgba(0,0,0,0.05)]">
         <div className="px-[32px] py-[28px]">
           <section>
+            {activeSection === 'profile' ? (
+              <>
             {/* User header */}
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -196,6 +221,14 @@ export function SettingsPage() {
                 Vista
               </button>
             </div>
+              </>
+            ) : (
+              <div className="py-8 text-[14px] leading-relaxed text-[#666]">
+                {activeSection === 'security' && 'Öryggisstillingar — í vinnslu.'}
+                {activeSection === 'preferences' && 'Notendastillingar — í vinnslu.'}
+                {activeSection === 'notification' && 'Tilkynningar — í vinnslu.'}
+              </div>
+            )}
           </section>
         </div>
       </div>

@@ -1,56 +1,40 @@
-import { Mail, Phone, Plus, Search } from 'lucide-react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Mail, Phone, Plus, Ruler, Search, Users } from 'lucide-react'
 import { useResidents } from '@/hooks/useResidents'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { isSupabaseConfigured } from '@/lib/supabase'
 import { useMemo, useState } from 'react'
+import {
+  HOLTSGATA24_APARTMENTS,
+  HOLTSGATA24_HMS_REGISTRY_URL,
+} from '@/data/holtsgata24-apartments'
 
-const MOCK_APARTMENTS = [
-  {
-    id: 'mock-1',
-    name: 'Íbúðareign 201',
-    property_number: '0301303042',
-    size: 100,
-    residents: [
-      {
-        id: 'mock-r-1',
-        full_name: 'Edda Falak',
-        role: 'formadur',
-        phone: '683454701',
-        email: 'eddafalak91@gmail.com',
-      },
-      {
-        id: 'mock-r-2',
-        full_name: 'Edda Falak',
-        role: null,
-        phone: '683454701',
-        email: 'eddafalak91@gmail.com',
-      },
-    ],
-  },
-  {
-    id: 'mock-2',
-    name: 'Íbúðareign 201',
-    property_number: '0301303042',
-    size: 100,
-    residents: [
-      {
-        id: 'mock-r-3',
-        full_name: 'Edda Falak',
-        role: 'formadur',
-        phone: '683454701',
-        email: 'eddafalak91@gmail.com',
-      },
-      {
-        id: 'mock-r-4',
-        full_name: 'Edda Falak',
-        role: null,
-        phone: '683454701',
-        email: 'eddafalak91@gmail.com',
-      },
-    ],
-  },
-] as const
+/** Sýnishorn þegar Supabase skilar engum íbúðum — byggt á HMS (Holtsgata 24, STF1008784). */
+const MOCK_APARTMENTS = HOLTSGATA24_APARTMENTS.map((a) => ({
+  id: a.id,
+  name: a.name,
+  property_number: a.property_number,
+  size: a.size,
+  residents: [] as Array<{
+    id: string
+    full_name: string | null
+    role: string | null
+    phone: string | null
+    email?: string | null
+  }>,
+}))
+
+function parseSizeM2(value: unknown): number {
+  if (typeof value === 'number' && !Number.isNaN(value)) return value
+  const n = parseFloat(String(value))
+  return Number.isNaN(n) ? 0 : n
+}
+
+function formatSizeLabel(value: unknown) {
+  const s = parseSizeM2(value)
+  if (s <= 0) return '— m²'
+  return `${s % 1 === 0 ? s : s.toLocaleString('is-IS', { maximumFractionDigits: 2 })} m²`
+}
 
 function roleLabel(role: string | null | undefined) {
   switch (role) {
@@ -68,15 +52,13 @@ function roleLabel(role: string | null | undefined) {
 }
 
 export function ResidentsPage() {
-  const { data, isLoading, isError } = useResidents()
+  const { data, isError, isPending } = useResidents()
+  const hasRemoteApartments = Boolean(data && data.length > 0)
+  const showRemoteLoading = isSupabaseConfigured() && isPending
   const [search, setSearch] = useState('')
   const [expandedApartmentIds, setExpandedApartmentIds] = useState<Set<string>>(
     () => new Set(),
   )
-  // Figma assets for the apartment table row.
-  // Generated from node-id `109:1975` in the Figma MCP workflow.
-  const imgVectorResidents = 'http://localhost:3845/assets/ddfe367ea94f000b6638706d7d7094ccb7b66941.svg'
-  const imgVectorSize = 'http://localhost:3845/assets/c8f12d2743cc0c98553a2e763a68e58c0d4b5b07.svg'
   const cardBoxShadow = '0px 0px 24px -4px rgba(0, 0, 0, 0.05)'
   const tableBoxShadow = '0px 0px 24px 0px rgba(0, 0, 0, 0.05)'
 
@@ -89,19 +71,22 @@ export function ResidentsPage() {
     })
   }
 
-  const baseList = (data && data.length > 0 ? data : MOCK_APARTMENTS) as Array<{
-    id: string
-    name: string
-    property_number: string
-    size: number
-    residents: Array<{
+  const baseList = useMemo(() => {
+    const list = (data && data.length > 0 ? data : MOCK_APARTMENTS) as Array<{
       id: string
-      full_name: string | null
-      role: string | null
-      phone: string | null
-      email?: string | null
+      name: string
+      property_number: string
+      size: number
+      residents: Array<{
+        id: string
+        full_name: string | null
+        role: string | null
+        phone: string | null
+        email?: string | null
+      }>
     }>
-  }>
+    return list
+  }, [data])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -110,9 +95,9 @@ export function ResidentsPage() {
     return baseList
       .map((apt) => {
         const matchesApt =
-          apt.name.toLowerCase().includes(q) ||
-          apt.property_number.toLowerCase().includes(q) ||
-          String(apt.size).includes(q)
+          (apt.name ?? '').toLowerCase().includes(q) ||
+          (apt.property_number ?? '').toLowerCase().includes(q) ||
+          String(parseSizeM2(apt.size)).includes(q)
         const matchingResidents = apt.residents.filter((r) => {
           const name = (r.full_name ?? '').toLowerCase()
           const phone = (r.phone ?? '').toLowerCase()
@@ -150,7 +135,7 @@ export function ResidentsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Leita að eiganda"
-                className="min-w-0 flex-1 bg-transparent text-[16px] leading-[1.25] text-black outline-none placeholder:text-[#666]"
+                className="min-w-0 flex-1 bg-transparent text-[16px] leading-[1.25] text-black outline-none placeholder:text-[#74849C]"
                 aria-label="Leit"
               />
               <Search className="h-5 w-5 shrink-0 text-[#666]" />
@@ -182,8 +167,25 @@ export function ResidentsPage() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="text-[14px] leading-5 text-[#666]">Sæki íbúa og íbúðir...</div>
+      {!hasRemoteApartments ? (
+        <p className="text-[12px] leading-relaxed text-[#666]">
+          Sýnishorn: 6 íbúðir í Holtsgötu 24 samkvæmt{' '}
+          <a
+            href={HOLTSGATA24_HMS_REGISTRY_URL}
+            className="font-medium text-[#18325a] underline underline-offset-2 hover:text-[#162b47]"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            HMS fasteignaskrá
+          </a>
+          . Tengdu gagnagrunn til að sýna skráða eigendur.
+        </p>
+      ) : null}
+
+      {showRemoteLoading ? (
+        <div className="text-[13px] leading-5 text-[#666]">
+          Sæki gögn frá gagnagrunn…
+        </div>
       ) : null}
 
       {isError ? (
@@ -222,12 +224,7 @@ export function ResidentsPage() {
                         Fasteignanúmer {apt.property_number}
                       </div>
                       <div className="flex items-center gap-[4px] text-[12px] leading-[1.5] text-[#666]">
-                        <img
-                          src={imgVectorResidents}
-                          alt=""
-                          className="h-[8.757px] w-[13.759px] shrink-0"
-                          aria-hidden="true"
-                        />
+                        <Users className="h-3.5 w-3.5 shrink-0 text-[#666]" aria-hidden />
                         <span>
                           {apt.residents.length} {apt.residents.length === 1 ? 'eigandi' : 'eigendur'}
                         </span>
@@ -237,14 +234,9 @@ export function ResidentsPage() {
 
                   <div className="flex flex-[0_0_auto] items-center gap-[8px] px-3">
                     <div className="flex items-center justify-center gap-[8px]">
-                      <img
-                        src={imgVectorSize}
-                        alt=""
-                        className="h-[14px] w-[14px] shrink-0"
-                        aria-hidden="true"
-                      />
+                      <Ruler className="h-3.5 w-3.5 shrink-0 text-[#666]" aria-hidden />
                       <div className="text-[14px] font-medium leading-[20px] text-[#323232]">
-                        {apt.size}m
+                        {formatSizeLabel(apt.size)}
                       </div>
                     </div>
                     <div

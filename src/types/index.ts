@@ -1,5 +1,7 @@
 export type Role = 'formadur' | 'gjaldkeri' | 'ritari' | 'eigandi'
 
+export type ProfileApprovalStatus = 'pending' | 'approved' | 'rejected'
+
 export interface Profile {
   id: string
   full_name: string | null
@@ -8,6 +10,7 @@ export interface Profile {
   role: Role | null
   apartment_id: string | null
   avatar_url: string | null
+  approval_status?: ProfileApprovalStatus
   created_at: string
 }
 

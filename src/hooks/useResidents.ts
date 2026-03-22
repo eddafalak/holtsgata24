@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { isSupabaseConfigured, supabase } from '@/lib/supabase'
 import type { Apartment, Profile } from '@/types'
 
 export interface ApartmentWithResidents extends Apartment {
@@ -29,6 +29,9 @@ export function useResidents() {
   return useQuery({
     queryKey: ['apartments-with-residents'],
     queryFn: fetchApartmentsAndResidents,
+    enabled: isSupabaseConfigured(),
+    retry: 1,
+    staleTime: 30_000,
   })
 }
 

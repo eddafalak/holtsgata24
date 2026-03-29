@@ -81,6 +81,9 @@
 
   --radius: 0.625rem;
 
+  /* Inntaksreitir, textarea, fellival — alltaf 8px (óháð almennum --radius). */
+  --radius-input: 8px;
+
   --sidebar: oklch(0.985 0 0);
 
   --sidebar-foreground: oklch(0.145 0 0);
@@ -245,6 +248,7 @@ code {
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
+  --radius-input: 8px;
   --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);

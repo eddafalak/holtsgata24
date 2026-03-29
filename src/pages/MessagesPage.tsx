@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button'
+import { inputBorderRadiusClass } from '@/design-system/tokens/inputs'
+import { cn } from '@/lib/utils'
 import { MessageCircle, MessagesSquare, Search, User2 } from 'lucide-react'
 
 export function MessagesPage() {
@@ -73,7 +75,10 @@ export function MessagesPage() {
             <div className="flex items-end gap-2">
               <textarea
                 rows={1}
-                className="min-h-[40px] max-h-24 flex-1 resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/60"
+                className={cn(
+                  'min-h-[40px] max-h-24 flex-1 resize-none border bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/60',
+                  inputBorderRadiusClass
+                )}
                 placeholder="Skrifaðu skilaboð..."
               />
               <Button size="sm" className="px-3">

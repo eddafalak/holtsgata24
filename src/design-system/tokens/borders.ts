@@ -6,6 +6,8 @@ export const borders = {
   radiusPx: {
     tabActive: '4px',
     segment: '6px',
+    /** Hnappar — samsvarar `Button` og `rounded-[8px]` á CTA */
+    button: '8px',
     dropdown: '8px',
     tabIdle: '14px',
   },

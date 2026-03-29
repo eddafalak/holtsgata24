@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { is as isISLocale } from 'date-fns/locale'
 import type { DateRange } from 'react-day-picker'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { CalendarDays, Check, ChevronDown, ChevronRight, Download, Plus, Search, Upload } from 'lucide-react'
+import { CalendarDays, Check, ChevronDown, ChevronRight, Clock, Download, Plus, Search, Upload } from 'lucide-react'
+import { TextField, labelTextVariants, requiredMarkVariants, shellVariants } from '@/components/ui/text-field'
+import { TextareaField } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import {
   Dialog,
@@ -17,6 +19,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { useResidents } from '@/hooks/useResidents'
+import { useMeetingMinutes, useMeetingMinutesList } from '@/hooks/useMeetingMinutes'
+import { MeetingMinutesEditor } from '@/components/meetings/MeetingMinutesEditor'
+import { MeetingMinutesView } from '@/components/meetings/MeetingMinutesView'
+import type { MeetingMinutes } from '@/types/minutes'
 
 const TABS = [
   { id: 'allir', label: 'Allir fundir' },
@@ -46,7 +52,7 @@ type Meeting = {
 
 const MOCK_MEETINGS: Meeting[] = [
   {
-    id: '1',
+    id: '11111111-1111-4111-8111-111111111111',
     dateISO: '2025-03-15',
     dateLabel: '15. mars 2025',
     title: 'Fundur um gluggaskipti',
@@ -61,7 +67,7 @@ const MOCK_MEETINGS: Meeting[] = [
     notifications: { sendToAll: false, email: false, inApp: false },
   },
   {
-    id: '2',
+    id: '22222222-2222-4222-8222-222222222222',
     dateISO: '2026-04-02',
     dateLabel: '02. apríl 2026',
     title: 'Aðalfundur',
@@ -76,7 +82,7 @@ const MOCK_MEETINGS: Meeting[] = [
     notifications: { sendToAll: true, email: true, inApp: true },
   },
   {
-    id: '3',
+    id: '33333333-3333-4333-8333-333333333333',
     dateISO: '2026-04-10',
     dateLabel: '10. apríl 2026',
     title: 'Fundur um viðhald',
@@ -91,7 +97,7 @@ const MOCK_MEETINGS: Meeting[] = [
     notifications: { sendToAll: true, email: true, inApp: true },
   },
   {
-    id: '4',
+    id: '44444444-4444-4444-8444-444444444444',
     dateISO: '2025-02-01',
     dateLabel: '01. febrúar 2025',
     title: 'Fundur um sameign',
@@ -106,7 +112,7 @@ const MOCK_MEETINGS: Meeting[] = [
     notifications: { sendToAll: false, email: false, inApp: false },
   },
   {
-    id: '5',
+    id: '55555555-5555-4555-8555-555555555555',
     dateISO: '2025-06-20',
     dateLabel: '20. júní 2025',
     title: 'Fundur um fjárhagsáætlun',
@@ -172,8 +178,29 @@ function getMeetingStatusFromDate(dateISO: string): MeetingStatus {
   return meetingDate.getTime() < today.getTime() ? 'past' : 'upcoming'
 }
 
-const BOOK_INPUT_CLASS =
-  'h-10 w-full rounded border border-[#e8eaee] bg-white px-4 text-[16px] leading-[1.25] text-black outline-none placeholder:text-[#666] focus-visible:ring-2 focus-visible:ring-black/10'
+/** Opnar fellilista — `showPicker()` á <select> þegar tiltækt, annars focus + click(). */
+function openNativeSelectDropdown(select: HTMLSelectElement | null) {
+  if (!select) return
+  const el = select as HTMLSelectElement & { showPicker?: () => void | Promise<void> }
+  if (typeof el.showPicker === 'function') {
+    try {
+      const out = el.showPicker()
+      if (out != null && typeof (out as Promise<void>).then === 'function') {
+        void (out as Promise<void>).catch(() => {
+          select.focus()
+          select.click()
+        })
+      }
+      return
+    } catch {
+      select.focus()
+      select.click()
+      return
+    }
+  }
+  select.focus()
+  select.click()
+}
 
 function BookFormCheckbox({
   id,
@@ -217,6 +244,8 @@ export function MeetingsPage() {
   const [isBookDialogOpen, setIsBookDialogOpen] = useState(false)
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null)
+  const [minutesEditorMeetingId, setMinutesEditorMeetingId] = useState<string | null>(null)
+  const [minutesViewId, setMinutesViewId] = useState<string | null>(null)
 
   const [meetingTitle, setMeetingTitle] = useState('')
   const [meetingDate, setMeetingDate] = useState('')
@@ -235,6 +264,7 @@ export function MeetingsPage() {
     () => new Set(),
   )
   const [formTouched, setFormTouched] = useState(false)
+  const meetingTypeSelectRef = useRef<HTMLSelectElement>(null)
 
   // Date filter popover + range
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
@@ -391,6 +421,16 @@ export function MeetingsPage() {
       ? MEETING_TYPES.find((t) => t.id === selectedMeeting.meetingType)?.label ?? 'Annað'
       : null
 
+  const { data: minutesList } = useMeetingMinutesList()
+  const minutesByMeetingId = useMemo(() => {
+    const map = new Map<string, MeetingMinutes>()
+    for (const item of minutesList ?? []) map.set(item.meeting_id, item)
+    return map
+  }, [minutesList])
+
+  const editingMeeting = meetings.find((m) => m.id === minutesEditorMeetingId) ?? null
+  const editorMinutesHook = useMeetingMinutes(minutesEditorMeetingId ?? '')
+
   return (
     <div className="flex flex-col gap-4">
       {/* Filter bar – Figma: white card, shadow, tabs + filters row */}
@@ -398,7 +438,7 @@ export function MeetingsPage() {
         className={cn('flex flex-col gap-6 rounded-lg border border-[#f2f3f4] bg-white p-6')}
         style={{ boxShadow: cardBoxShadow }}
       >
-        <div className="bg-[#f3f5f7] flex items-center justify-center px-[2px] py-[2px] relative rounded-[6px] w-fit shrink-0 h-[44px]">
+        <div className="flex items-center gap-[24px] border-b border-[#e8efef]">
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id
             return (
@@ -407,20 +447,13 @@ export function MeetingsPage() {
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  'flex h-[100%] items-center justify-center px-[16px] py-[4px] transition-colors',
+                  'flex items-center py-[8px] border-b-2 text-[16px] leading-[1.25] whitespace-nowrap',
                   isActive
-                    ? 'rounded-[4px] bg-white shadow-[0px_2px_6px_0px_rgba(0,0,0,0.06),0px_1px_2px_0px_rgba(0,0,0,0.04)]'
-                    : 'rounded-[14px] bg-transparent',
+                    ? 'border-[#323232] font-bold text-black'
+                    : 'border-transparent font-normal text-[#666]',
                 )}
               >
-                <span
-                  className={cn(
-                    'whitespace-nowrap text-[14px] leading-[16px]',
-                    isActive ? 'font-bold text-[#323232]' : 'font-medium text-[#666]',
-                  )}
-                >
-                  {tab.label}
-                </span>
+                {tab.label}
               </button>
             )
           })}
@@ -553,30 +586,28 @@ export function MeetingsPage() {
                   Bóka fund
                 </Button>
               </DialogTrigger>
-              <DialogContent side="right" className="flex max-h-none flex-col gap-6 overflow-hidden">
-                <DialogHeader className="space-y-0 pr-10 text-left">
-                  <DialogTitle className="text-[18px] font-medium leading-[1.333] text-[#323232]">
-                    Nýr fundur
+              <DialogContent
+                side="right"
+                className="flex max-h-none flex-col gap-0 overflow-hidden p-0"
+              >
+                <div className="relative shrink-0 border-b border-[#f2f3f4] bg-white px-6 pb-4 pt-5 pr-14 shadow-[0px_2px_8px_0px_rgba(0,0,0,0.05)]">
+                  <DialogTitle className="text-left text-[18px] font-semibold leading-6 text-[#1a1a1a]">
+                    Fundargerð
                   </DialogTitle>
-                </DialogHeader>
+                </div>
 
-                <div className="flex min-h-0 flex-1 flex-col gap-6">
+                <div className="flex min-h-0 flex-1 flex-col gap-6 p-6">
                   <div className="min-h-0 flex-1 space-y-6 overflow-y-auto pr-1">
-                    {/* Figma: surface / table card — grunnreitur */}
                     <div className="rounded bg-[#fbfbfc] p-6">
                       <div className="grid gap-4">
-                        <div className="grid gap-2">
-                          <label
-                            htmlFor="book-meeting-title"
-                            className="text-[14px] leading-4 text-[#323232]"
-                          >
-                            Titill fundar (nauðsynlegt)
-                          </label>
-                          <input
+                        <div className="space-y-1">
+                          <TextField
                             id="book-meeting-title"
+                            size="lg"
+                            label="Titill"
+                            required
                             value={meetingTitle}
                             onChange={(e) => setMeetingTitle(e.target.value)}
-                            className={BOOK_INPUT_CLASS}
                             placeholder="T.d „Laga glugga að utan“"
                             aria-invalid={formTouched && !isTitleValid}
                           />
@@ -588,46 +619,40 @@ export function MeetingsPage() {
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          <div className="grid min-w-0 gap-2">
-                            <label
-                              htmlFor="book-meeting-date"
-                              className="text-[14px] leading-4 text-[#323232]"
-                            >
-                              Dagsetning (nauðsynlegt)
-                            </label>
-                            <div className="flex h-10 items-center rounded border border-[#e8eaee] bg-white">
-                              <input
-                                id="book-meeting-date"
-                                type="date"
-                                value={meetingDate}
-                                onChange={(e) => setMeetingDate(e.target.value)}
-                                className="h-full min-w-0 flex-1 rounded border-0 bg-transparent px-4 text-[16px] leading-[1.25] text-black outline-none focus-visible:ring-0"
-                                aria-invalid={formTouched && !isDateValid}
-                              />
-                            </div>
+                          <div className="min-w-0 space-y-1">
+                            <TextField
+                              id="book-meeting-date"
+                              size="lg"
+                              label="Dagsetning"
+                              required
+                              type="date"
+                              value={meetingDate}
+                              onChange={(e) => setMeetingDate(e.target.value)}
+                              startIcon={<CalendarDays className="text-[#666]" aria-hidden />}
+                              startIconTriggersPicker
+                              startIconLabel="Velja dagsetningu"
+                              aria-invalid={formTouched && !isDateValid}
+                            />
                             {formTouched && !isDateValid ? (
                               <div className="text-[12px] leading-4 text-red-600">
                                 Vinsamlegast veldu dagsetningu.
                               </div>
                             ) : null}
                           </div>
-                          <div className="grid min-w-0 gap-2">
-                            <label
-                              htmlFor="book-meeting-time"
-                              className="text-[14px] leading-4 text-[#323232]"
-                            >
-                              Tími (nauðsynlegt)
-                            </label>
-                            <div className="flex h-10 items-center rounded border border-[#e8eaee] bg-white">
-                              <input
-                                id="book-meeting-time"
-                                type="time"
-                                value={meetingTime}
-                                onChange={(e) => setMeetingTime(e.target.value)}
-                                className="h-full w-full rounded border-0 bg-transparent px-4 text-[16px] leading-[1.25] text-black outline-none focus-visible:ring-0"
-                                aria-invalid={formTouched && !isTimeValid}
-                              />
-                            </div>
+                          <div className="min-w-0 space-y-1">
+                            <TextField
+                              id="book-meeting-time"
+                              size="lg"
+                              label="Tími"
+                              required
+                              type="time"
+                              value={meetingTime}
+                              onChange={(e) => setMeetingTime(e.target.value)}
+                              startIcon={<Clock className="text-[#666]" aria-hidden />}
+                              startIconTriggersPicker
+                              startIconLabel="Velja tíma"
+                              aria-invalid={formTouched && !isTimeValid}
+                            />
                             {formTouched && !isTimeValid ? (
                               <div className="text-[12px] leading-4 text-red-600">
                                 Vinsamlegast veldu tíma.
@@ -637,52 +662,61 @@ export function MeetingsPage() {
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          <div className="grid min-w-0 gap-2">
-                            <label
-                              htmlFor="book-meeting-location"
-                              className="text-[14px] leading-4 text-[#323232]"
-                            >
-                              Staðsetning (valkvætt)
-                            </label>
-                            <input
+                          <div className="min-w-0">
+                            <TextField
                               id="book-meeting-location"
+                              size="lg"
+                              label="Staðsetning"
                               value={meetingLocation}
                               onChange={(e) => setMeetingLocation(e.target.value)}
-                              className={BOOK_INPUT_CLASS}
                               placeholder="Staðsetning"
                             />
                           </div>
-                          <div className="grid min-w-0 gap-2">
-                            <label
-                              htmlFor="book-meeting-type"
-                              className="text-[14px] leading-4 text-[#323232]"
-                            >
-                              Fundartegund (nauðsynlegt)
-                            </label>
-                            <div className="relative">
-                              <select
-                                id="book-meeting-type"
-                                value={meetingType}
-                                onChange={(e) =>
-                                  setMeetingType(e.target.value as MeetingTypeId | '')
-                                }
-                                className={cn(
-                                  BOOK_INPUT_CLASS,
-                                  'appearance-none pr-10',
-                                  meetingType === '' ? 'text-[#666]' : 'text-black',
-                                )}
-                                aria-invalid={formTouched && !isTypeValid}
-                              >
-                                <option value="" disabled>
-                                  Fundartegund
-                                </option>
-                                {MEETING_TYPES.map((t) => (
-                                  <option key={t.id} value={t.id}>
-                                    {t.label}
-                                  </option>
-                                ))}
-                              </select>
-                              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-[#666]" />
+                          <div className="min-w-0 space-y-1">
+                            <div className={cn(shellVariants({ size: 'lg' }))}>
+                              <div className="flex min-h-0 min-w-0 flex-1 items-center gap-2 pl-3 pr-4">
+                                <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-1.5">
+                                  <span className="flex w-full min-w-0 items-center gap-0.5">
+                                    <span className={labelTextVariants({ size: 'lg' })}>Fundartegund</span>
+                                    <span className={requiredMarkVariants({ size: 'lg' })} aria-hidden>
+                                      *
+                                    </span>
+                                  </span>
+                                  <select
+                                    ref={meetingTypeSelectRef}
+                                    id="book-meeting-type"
+                                    value={meetingType}
+                                    onChange={(e) =>
+                                      setMeetingType(e.target.value as MeetingTypeId | '')
+                                    }
+                                    className={cn(
+                                      'w-full cursor-pointer appearance-none border-0 bg-transparent p-0 text-[16px] leading-6 outline-none focus-visible:ring-0',
+                                      meetingType === '' ? 'text-[#666]' : 'text-[#1a1a1a]',
+                                    )}
+                                    aria-invalid={formTouched && !isTypeValid}
+                                  >
+                                    <option value="" disabled>
+                                      Veldu tegund
+                                    </option>
+                                    {MEETING_TYPES.map((t) => (
+                                      <option key={t.id} value={t.id}>
+                                        {t.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-[#666] transition-colors hover:bg-black/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+                                  aria-label="Opna vallista fundartegundar"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    openNativeSelectDropdown(meetingTypeSelectRef.current)
+                                  }}
+                                >
+                                  <ChevronDown className="size-5" aria-hidden />
+                                </button>
+                              </div>
                             </div>
                             {formTouched && !isTypeValid ? (
                               <div className="text-[12px] leading-4 text-red-600">
@@ -692,30 +726,16 @@ export function MeetingsPage() {
                           </div>
                         </div>
 
-                        <div className="grid gap-2">
-                          <label
-                            htmlFor="book-meeting-description"
-                            className="text-[14px] leading-4 text-black"
-                          >
-                            Lýsing fundar
-                          </label>
-                          <div className="relative rounded-lg border border-[#e5e5e5] bg-white px-4 pb-8 pt-2">
-                            <textarea
-                              id="book-meeting-description"
-                              value={meetingDescription}
-                              onChange={(e) =>
-                                setMeetingDescription(e.target.value.slice(0, 500))
-                              }
-                              maxLength={500}
-                              rows={5}
-                              className="min-h-[120px] w-full resize-none border-0 bg-transparent p-0 text-[16px] leading-[1.5] text-black outline-none placeholder:text-[#666] focus-visible:ring-0"
-                              placeholder="t.d. Umræða um viðhald á þaki, samþykkt fjárhagsáætlunar..."
-                            />
-                            <p className="absolute bottom-2 right-4 text-[12px] leading-4 text-[#b3b3b3]">
-                              {meetingDescription.length}/500 stafir
-                            </p>
-                          </div>
-                        </div>
+                        <TextareaField
+                          id="book-meeting-description"
+                          label="Lýsing fundar"
+                          labelPlacement="inside"
+                          maxLength={500}
+                          value={meetingDescription}
+                          onChange={(e) => setMeetingDescription(e.target.value.slice(0, 500))}
+                          placeholder="t.d. Umræða um viðhald á þaki, samþykkt fjárhagsáætlunar..."
+                          showCharCount
+                        />
                       </div>
                     </div>
 
@@ -966,7 +986,7 @@ export function MeetingsPage() {
         className={cn('rounded-lg border border-[#f2f3f4] bg-white px-6 pb-6 pt-6')}
         style={{ boxShadow: cardBoxShadow }}
       >
-        <div className="grid h-11 grid-cols-[minmax(0,1fr)_244px_120px_140px_minmax(0,1fr)] items-center px-4">
+        <div className="grid h-11 grid-cols-[minmax(0,1fr)_244px_140px_minmax(0,1fr)] items-center px-4">
           <div className="flex min-w-0 items-center px-3">
             <span className="text-[14px] font-medium leading-5 text-[#666]">
               Fundur
@@ -975,11 +995,6 @@ export function MeetingsPage() {
           <div className="flex min-w-0 items-center px-3">
             <span className="text-[14px] font-medium leading-5 text-[#666]">
               Dagsetning
-            </span>
-          </div>
-          <div className="flex min-w-0 items-center px-3">
-            <span className="text-[14px] font-medium leading-5 text-[#666]">
-              Tími
             </span>
           </div>
           <div className="flex min-w-0 items-center px-3">
@@ -1004,7 +1019,7 @@ export function MeetingsPage() {
               <div
                 key={meeting.id}
                 className={cn(
-                  'grid h-[76px] grid-cols-[minmax(0,1fr)_244px_120px_140px_minmax(0,1fr)] items-center rounded-lg px-4 py-4 cursor-pointer',
+                  'grid h-[76px] grid-cols-[minmax(0,1fr)_244px_140px_minmax(0,1fr)] items-center rounded-lg px-4 py-4 cursor-pointer',
                   'bg-[rgba(242,243,244,0.3)]',
                   'hover:bg-[rgba(242,243,244,0.45)]',
                 )}
@@ -1039,14 +1054,6 @@ export function MeetingsPage() {
                 >
                   {meeting.dateLabel}
                 </div>
-                <div
-                  className={cn(
-                    'flex min-w-0 items-center px-3 text-[16px] font-normal leading-5',
-                    meeting.status === 'past' ? 'text-[#666]' : 'text-black',
-                  )}
-                >
-                  {meeting.time ?? '—'}
-                </div>
                 <div className="flex min-w-0 items-center px-3">
                   {meeting.status === 'upcoming' ? (
                     <span className="inline-flex shrink-0 items-center justify-center gap-[6px] rounded-full bg-white px-2.5 py-1 text-[12px] font-medium uppercase leading-4 text-black">
@@ -1054,26 +1061,84 @@ export function MeetingsPage() {
                       Væntanlegur
                     </span>
                   ) : (
-                    <span className="inline-flex shrink-0 items-center rounded-full bg-[#f2f3f4] px-2.5 py-1 text-[12px] font-bold leading-4 text-[#666]">
-                      Eldri
-                    </span>
+                    (() => {
+                      const mm = minutesByMeetingId.get(meeting.id)
+                      if (mm?.is_finalized) {
+                        return (
+                          <span className="inline-flex shrink-0 items-center rounded-full bg-[#dcfce7] px-2.5 py-1 text-[12px] font-bold leading-4 text-[#166534]">
+                            Fundargerð lokið
+                          </span>
+                        )
+                      }
+                      if (mm?.is_draft) {
+                        return (
+                          <span className="inline-flex shrink-0 items-center rounded-full bg-[#fff7ed] px-2.5 py-1 text-[12px] font-bold leading-4 text-[#9a3412]">
+                            Fundargerð í vinnslu
+                          </span>
+                        )
+                      }
+                      return (
+                        <span className="inline-flex shrink-0 items-center rounded-full bg-[#f2f3f4] px-2.5 py-1 text-[12px] font-bold leading-4 text-[#666]">
+                          Engin fundargerð
+                        </span>
+                      )
+                    })()
                   )}
                 </div>
                 <div className="flex min-w-0 items-center justify-end px-3">
-                  {meeting.hasMinutes ? (
+                  {meeting.status === 'upcoming' ? (
                     <button
                       type="button"
-                      className={cn(
-                        'inline-flex w-fit items-center gap-1.5 rounded-md px-4 py-2 text-[14px] font-normal leading-4 hover:underline',
-                        meeting.status === 'past' ? 'text-[#666]' : 'text-black',
-                      )}
-                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex w-fit items-center gap-1.5 rounded-md px-4 py-2 text-[14px] font-bold leading-4 text-[#18325A] hover:underline"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setMinutesEditorMeetingId(meeting.id)
+                      }}
                     >
-                      Sækja fundagerð
+                      {minutesByMeetingId.get(meeting.id)?.is_draft
+                        ? 'Halda áfram með fundargerð'
+                        : 'Búa til fundargerð'}
                       <ChevronRight className="h-4 w-4" />
                     </button>
+                  ) : minutesByMeetingId.get(meeting.id)?.is_finalized ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="inline-flex w-fit items-center gap-1 rounded-md px-3 py-2 text-[13px] font-medium leading-4 text-[#666] hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const mm = minutesByMeetingId.get(meeting.id)
+                          if (mm?.pdf_url) window.open(mm.pdf_url, '_blank', 'noopener,noreferrer')
+                        }}
+                      >
+                        Sækja fundargerð
+                        <Download className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        className="inline-flex w-fit items-center gap-1 rounded-md px-3 py-2 text-[13px] font-medium leading-4 text-[#18325A] hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const mm = minutesByMeetingId.get(meeting.id)
+                          if (mm) setMinutesViewId(mm.id)
+                        }}
+                      >
+                        Skoða fundargerð
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
                   ) : (
-                    <span className="text-[#666]">—</span>
+                    <button
+                      type="button"
+                      className="inline-flex w-fit items-center gap-1.5 rounded-md px-4 py-2 text-[14px] font-bold leading-4 text-[#18325A] hover:underline"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setMinutesEditorMeetingId(meeting.id)
+                      }}
+                    >
+                      Búa til fundargerð
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
                   )}
                 </div>
               </div>
@@ -1081,6 +1146,61 @@ export function MeetingsPage() {
           )}
         </div>
       </div>
+
+      <Dialog
+        open={Boolean(minutesEditorMeetingId)}
+        onOpenChange={(open) => {
+          if (!open) setMinutesEditorMeetingId(null)
+        }}
+      >
+        <DialogContent side="right" className="flex max-h-none flex-col gap-6 overflow-hidden">
+          <DialogHeader className="space-y-0 pr-10 text-left">
+            <DialogTitle className="text-[18px] font-medium leading-[1.333] text-[#323232]">
+              {minutesByMeetingId.get(minutesEditorMeetingId ?? '')?.is_draft
+                ? 'Halda áfram með fundargerð'
+                : 'Búa til fundargerð'}
+            </DialogTitle>
+            <DialogDescription className="text-[14px] text-[#666]">
+              Skráðu fundargerð beint í kerfið.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            {editingMeeting ? (
+              <MeetingMinutesEditor
+                meetingId={editingMeeting.id}
+                existingMinutes={editorMinutesHook.minutes}
+                onSave={() => {
+                  // no-op; hook query updates state
+                }}
+                onFinalize={() => {
+                  setMinutesEditorMeetingId(null)
+                }}
+              />
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(minutesViewId)}
+        onOpenChange={(open) => {
+          if (!open) setMinutesViewId(null)
+        }}
+      >
+        <DialogContent side="right" className="flex max-h-none flex-col gap-6 overflow-hidden">
+          <DialogHeader className="space-y-0 pr-10 text-left">
+            <DialogTitle className="text-[18px] font-medium leading-[1.333] text-[#323232]">
+              Skoða fundargerð
+            </DialogTitle>
+            <DialogDescription className="text-[14px] text-[#666]">
+              Lokin fundargerð.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            {minutesViewId ? <MeetingMinutesView minutesId={minutesViewId} /> : null}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

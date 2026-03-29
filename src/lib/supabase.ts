@@ -20,6 +20,38 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    // Cursor's webview/preview can block `localStorage`. If that happens,
+    // Supabase auth can fail silently and the app looks "connected but nothing works".
+    // We provide an in-memory fallback storage that never throws.
+    storage:
+      typeof window === 'undefined'
+        ? undefined
+        : (() => {
+            const memory = new Map<string, string>()
+            return {
+              async getItem(key: string) {
+                try {
+                  return window.localStorage.getItem(key)
+                } catch {
+                  return memory.get(key) ?? null
+                }
+              },
+              async setItem(key: string, value: string) {
+                try {
+                  window.localStorage.setItem(key, value)
+                } catch {
+                  memory.set(key, value)
+                }
+              },
+              async removeItem(key: string) {
+                try {
+                  window.localStorage.removeItem(key)
+                } catch {
+                  memory.delete(key)
+                }
+              },
+            }
+          })(),
   },
 })
 

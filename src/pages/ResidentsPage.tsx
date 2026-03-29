@@ -1,13 +1,11 @@
-import { ChevronRight, Mail, Phone, Plus, Ruler, Search, Users } from 'lucide-react'
+import { ChartPieSlice, Selection } from '@phosphor-icons/react'
+import { ChevronRight, Mail, Phone, Plus, Search, Users } from 'lucide-react'
 import { useResidents } from '@/hooks/useResidents'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import { useMemo, useState } from 'react'
-import {
-  HOLTSGATA24_APARTMENTS,
-  HOLTSGATA24_HMS_REGISTRY_URL,
-} from '@/data/holtsgata24-apartments'
+import { HOLTSGATA24_APARTMENTS } from '@/data/holtsgata24-apartments'
 
 /** Sýnishorn þegar Supabase skilar engum íbúðum — byggt á HMS (Holtsgata 24, STF1008784). */
 const MOCK_APARTMENTS = HOLTSGATA24_APARTMENTS.map((a) => ({
@@ -51,9 +49,24 @@ function roleLabel(role: string | null | undefined) {
   }
 }
 
+/** Birting í korti: aðeins „Íbúð, 0201“ — án „Holtsgata 24, …“. */
+function formatApartmentCardTitle(name: string | null | undefined) {
+  const n = (name ?? '').trim()
+  const m = n.match(/íbúð\s+(\d+)/i)
+  if (m?.[1]) return `Íbúð, ${m[1]}`
+  return n || '—'
+}
+
+/** hlutfall íbúðar af heildarfermetrum byggingar (sömu listanum og í UI). */
+function ownershipPercentLabel(size: unknown, totalBuildingM2: number) {
+  const s = parseSizeM2(size)
+  if (totalBuildingM2 <= 0 || s <= 0) return '—'
+  const pct = (s / totalBuildingM2) * 100
+  return `${pct.toLocaleString('is-IS', { maximumFractionDigits: 1, minimumFractionDigits: 0 })}%`
+}
+
 export function ResidentsPage() {
   const { data, isError, isPending } = useResidents()
-  const hasRemoteApartments = Boolean(data && data.length > 0)
   const showRemoteLoading = isSupabaseConfigured() && isPending
   const [search, setSearch] = useState('')
   const [expandedApartmentIds, setExpandedApartmentIds] = useState<Set<string>>(
@@ -88,6 +101,11 @@ export function ResidentsPage() {
     return list
   }, [data])
 
+  const totalBuildingM2 = useMemo(
+    () => baseList.reduce((sum, apt) => sum + parseSizeM2(apt.size), 0),
+    [baseList],
+  )
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return baseList
@@ -119,7 +137,7 @@ export function ResidentsPage() {
   }, [baseList, search])
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4">
       <div
         className={cn('flex flex-col items-start overflow-hidden rounded-lg border border-[#f2f3f4] bg-white p-6')}
         style={{ boxShadow: cardBoxShadow }}
@@ -145,7 +163,7 @@ export function ResidentsPage() {
           <div className="flex gap-2">
             <Button
               size="sm"
-              className="h-11 min-w-[44px] rounded-md bg-[#dfffb4] px-4 text-[14px] font-bold text-black hover:bg-[#cdf28c] border-0"
+              className="h-11 min-w-[44px] rounded-md bg-[#18325a] px-4 text-[14px] font-bold text-white hover:bg-[#162b47] border-0"
               onClick={() => {
                 // TODO: Hook up to create resident/apartment flow
               }}
@@ -166,21 +184,6 @@ export function ResidentsPage() {
           </div>
         </div>
       </div>
-
-      {!hasRemoteApartments ? (
-        <p className="text-[12px] leading-relaxed text-[#666]">
-          Sýnishorn: 6 íbúðir í Holtsgötu 24 samkvæmt{' '}
-          <a
-            href={HOLTSGATA24_HMS_REGISTRY_URL}
-            className="font-medium text-[#18325a] underline underline-offset-2 hover:text-[#162b47]"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            HMS fasteignaskrá
-          </a>
-          . Tengdu gagnagrunn til að sýna skráða eigendur.
-        </p>
-      ) : null}
 
       {showRemoteLoading ? (
         <div className="text-[13px] leading-5 text-[#666]">
@@ -217,11 +220,20 @@ export function ResidentsPage() {
                 >
                   <div className="flex flex-[1_0_0] flex-col gap-1">
                     <div className="text-[16px] font-medium leading-[20px] text-[#323232]">
-                      {apt.name}
+                      {formatApartmentCardTitle(apt.name)}
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-[12px] leading-[1.5] text-[#666]">
                         Fasteignanúmer {apt.property_number}
+                      </div>
+                      <div
+                        className="flex items-center gap-[4px] text-[12px] leading-[1.5] text-[#666]"
+                        title="Hlutfall flatarmáls íbúðar miðað við heildarfermetra allra íbúða í listanum"
+                      >
+                        <ChartPieSlice className="h-3.5 w-3.5 shrink-0 text-[#666]" aria-hidden weight="regular" />
+                        <span>
+                          Eignarhlutfall: {ownershipPercentLabel(apt.size, totalBuildingM2)}
+                        </span>
                       </div>
                       <div className="flex items-center gap-[4px] text-[12px] leading-[1.5] text-[#666]">
                         <Users className="h-3.5 w-3.5 shrink-0 text-[#666]" aria-hidden />
@@ -234,7 +246,7 @@ export function ResidentsPage() {
 
                   <div className="flex flex-[0_0_auto] items-center gap-[8px] px-3">
                     <div className="flex items-center justify-center gap-[8px]">
-                      <Ruler className="h-3.5 w-3.5 shrink-0 text-[#666]" aria-hidden />
+                      <Selection className="h-3.5 w-3.5 shrink-0 text-[#666]" aria-hidden weight="regular" />
                       <div className="text-[14px] font-medium leading-[20px] text-[#323232]">
                         {formatSizeLabel(apt.size)}
                       </div>
@@ -242,7 +254,7 @@ export function ResidentsPage() {
                     <div
                       className={cn(
                         'w-[16px] h-[16px] flex items-center justify-center shrink-0 transition-transform',
-                        isExpanded ? 'rotate-90' : 'rotate-0',
+                        isExpanded ? 'rotate-90' : '-rotate-90',
                       )}
                       aria-hidden="true"
                     >

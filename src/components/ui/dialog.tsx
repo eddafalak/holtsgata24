@@ -36,9 +36,9 @@ function DialogContent({
   const contentPositionClasses =
     side === 'right'
       ? [
-          // Right drawer
-          'fixed right-0 top-0 z-50 h-screen w-[520px] max-w-full translate-x-0 translate-y-0',
-          'rounded-none rounded-l-xl',
+          // Right drawer — top inset matches AppLayout shell (p-4); flush bottom for full usable height
+          'fixed right-0 top-4 bottom-0 z-50 flex min-h-0 w-[520px] max-w-full flex-col translate-x-0 translate-y-0',
+          'rounded-none rounded-l-[8px]',
           // Match base visuals
           'border border-[#f2f3f4] bg-white p-[24px] shadow-lg outline-none',
         ].join(' ')

@@ -29,6 +29,7 @@ export interface Meeting {
   meeting_date: string
   meeting_type: string | null
   pdf_url: string | null
+  location?: string | null
   created_by: string
   created_at: string
 }

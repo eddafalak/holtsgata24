@@ -24,10 +24,11 @@ export type Holtsgata24Apartment = {
   fasteignamatKr: number
 }
 
+/** Samræmist `supabase/seed.sql` (public.apartments.id) fyrir tengingu við profiles.apartment_id */
 export const HOLTSGATA24_APARTMENTS: Holtsgata24Apartment[] = [
   {
-    id: 'hms-f2001089',
-    name: 'Holtsgata 24 — íbúð 0201',
+    id: 'a0000000-0000-4000-8000-000000000001',
+    name: 'Holtsgata 24, íbúð 0201',
     property_number: 'F2001089',
     merking: '01-0201',
     size: 58.6,
@@ -35,8 +36,8 @@ export const HOLTSGATA24_APARTMENTS: Holtsgata24Apartment[] = [
     fasteignamatKr: 55_200_000,
   },
   {
-    id: 'hms-f2001090',
-    name: 'Holtsgata 24 — íbúð 0202',
+    id: 'a0000000-0000-4000-8000-000000000002',
+    name: 'Holtsgata 24, íbúð 0202',
     property_number: 'F2001090',
     merking: '01-0202',
     size: 101.4,
@@ -44,8 +45,8 @@ export const HOLTSGATA24_APARTMENTS: Holtsgata24Apartment[] = [
     fasteignamatKr: 86_550_000,
   },
   {
-    id: 'hms-f2001091',
-    name: 'Holtsgata 24 — íbúð 0301',
+    id: 'a0000000-0000-4000-8000-000000000003',
+    name: 'Holtsgata 24, íbúð 0301',
     property_number: 'F2001091',
     merking: '01-0301',
     size: 58.6,
@@ -53,8 +54,8 @@ export const HOLTSGATA24_APARTMENTS: Holtsgata24Apartment[] = [
     fasteignamatKr: 55_150_000,
   },
   {
-    id: 'hms-f2001092',
-    name: 'Holtsgata 24 — íbúð 0302',
+    id: 'a0000000-0000-4000-8000-000000000004',
+    name: 'Holtsgata 24, íbúð 0302',
     property_number: 'F2001092',
     merking: '01-0302',
     size: 100.3,
@@ -62,8 +63,8 @@ export const HOLTSGATA24_APARTMENTS: Holtsgata24Apartment[] = [
     fasteignamatKr: 86_100_000,
   },
   {
-    id: 'hms-f2001093',
-    name: 'Holtsgata 24 — íbúð 0401',
+    id: 'a0000000-0000-4000-8000-000000000005',
+    name: 'Holtsgata 24, íbúð 0401',
     property_number: 'F2001093',
     merking: '01-0401',
     size: 76,
@@ -71,8 +72,8 @@ export const HOLTSGATA24_APARTMENTS: Holtsgata24Apartment[] = [
     fasteignamatKr: 60_600_000,
   },
   {
-    id: 'hms-f2001094',
-    name: 'Holtsgata 24 — íbúð 0402',
+    id: 'a0000000-0000-4000-8000-000000000006',
+    name: 'Holtsgata 24, íbúð 0402',
     property_number: 'F2001094',
     merking: '01-0402',
     size: 133.7,
